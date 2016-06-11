@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+INSTALL='sudo apt-get install'
+
+PKGS=(http://ftp.gnu.org/gnu/gmp/gmp-6.1.0.tar.xz  http://www.mpfr.org/mpfr-3.1.3/mpfr-3.1.3.tar.xz http://www.multiprecision.org/mpc/download/mpc-1.0.3.tar.gz http://www.linuxfromscratch.org/patches/lfs/7.9-systemd/mpfr-3.1.3-upstream_fixes-2.patch )
+
+init(){
+	change-bash
+	install-dep
+	install-libs
+	check
+}
+
+
+check(){
+	bash check/version-check.sh
+	bash check/library-check.sh
+}
+
+change-bash(){
+	if [ "$(id -u)" == 0 ]; then
+		sudo dpkg-reconfigure dash
+	else
+		echo "Esse metodo deve ser execultado com usuario ROOT."
+	fi
+}
+
+install-dep(){
+	$INSTALL bison gawk texinfo
+	$INSTALL build-essential
+	$INSTALL linux-headers-$(uname -r)
+}
+
+install-libs(){
+	for pkg in "${PKGS[@]}"
+	do	
+		[  -f check/${pkg##*/} ]  && echo "FOUND $pkg" || wget $pkg --continue -P check
+	done
+	
+	cd check 
+	pkg-gmp
+	pkg-mpfr
+	pkg-mpc
+}
+
+
+pkg-gmp(){
+	[  -d gmp-6.1.0 ]  && rm -rf gmp-6.1.0 || echo ""
+        tar xf gmp-6.1.0.tar.xz
+        cd gmp-6.1.0
+        ./configure --prefix=/usr    \
+            --enable-cxx     \
+            --disable-static \
+            --docdir=/usr/share/doc/gmp-6.1.0
+        make -j2
+        # make -j2 check 2>&1 | tee gmp-check-log
+        # awk '/# PASS:/{total+=$3} ; END{print total}' gmp-check-log
+        make install
+	cd ..
+	rm -rf gmp-6.1.0
+}
+
+pkg-mpfr(){
+	[  -d mpfr-3.1.3 ]  && rm -rf mpfr-3.1.3 || echo ""
+	tar xf mpfr-3.1.3.tar.xz
+	cd mpfr-3.1.3
+	patch -Np1 -i ../mpfr-3.1.3-upstream_fixes-2.patch
+	./configure --prefix=/usr        \
+            --disable-static     \
+            --enable-thread-safe \
+            --docdir=/usr/share/doc/mpfr-3.1.3
+	make -j2
+	make -j2 check
+	make install
+
+	cd ..
+	rm -rf mpfr-3.1.3
+}
+
+pkg-mpc(){
+	[  -d mpc-1.0.3 ]  && rm -rf mpc-1.0.3 || echo ""
+	tar xf mpc-1.0.3.tar.gz 
+	cd mpc-1.0.3
+	
+	./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/mpc-1.0.3
+
+	make -j2 
+	make -j2 check
+	make install
+	cd ..
+	rm -rf mpc-1.0.3
+}
+
+$*
