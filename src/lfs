@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import os
+import optparse
+import commands
+
+PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+def check():
+    """Check dependencies host system."""
+    cmd = """cd {path} && \
+             echo 'Dependencies checking\n---------------------' &&
+             bash version-check.sh &&
+             echo '\nLibrary checking\n----------------' &&
+             bash library-check.sh""".format(
+        path=PATH)
+    print commands.getoutput(cmd)
+
+
+def main():
+    """Main."""
+    parse = optparse.OptionParser(usage='%prog [options]')
+
+    parse.add_option('-c', '--check',
+                     action='store_true',
+                     dest='check',
+                     default=False,
+                     help='Check dependencies system')
+    (opts, args) = parse.parse_args()
+
+    if opts.check:
+        check()
+
+if __name__ == '__main__':
+    main()
